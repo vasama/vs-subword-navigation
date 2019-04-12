@@ -6,77 +6,77 @@
 
 	<Commands>
 		<Groups>
-			<Group guid="guidSubWordCmdSet" id="SubWordMenuGroup" priority="0x600">
+			<Group guid="guidSubwordCmdSet" id="SubwordMenuGroup" priority="0x600">
 				<Parent guid="guidSHLMainMenu" id="IDM_VS_MENU_EDIT"/>
 			</Group>
 		</Groups>
 	</Commands>
 
-	<Commands package="guidSubWordPackage">
+	<Commands package="guidSubwordPackage">
 		<Buttons>
-			<Button guid="guidSubWordCmdSet" id="cmdidSubWordNext" priority="0x100" type="Button">
-				<Parent guid="guidSubWordCmdSet" id="SubWordMenuGroup"/>
+			<Button guid="guidSubwordCmdSet" id="cmdidSubwordNext" priority="0x100" type="Button">
+				<Parent guid="guidSubwordCmdSet" id="SubwordMenuGroup"/>
 				<CommandFlag>CommandWellOnly</CommandFlag>
 				<Strings>
-					<ButtonText>SubWordNext</ButtonText>
-					<CommandName>SubWordNext</CommandName>
+					<ButtonText>SubwordNext</ButtonText>
+					<CommandName>SubwordNext</CommandName>
 				</Strings>
 			</Button>
-			<Button guid="guidSubWordCmdSet" id="cmdidSubWordPrev" priority="0x100" type="Button">
-				<Parent guid="guidSubWordCmdSet" id="SubWordMenuGroup"/>
+			<Button guid="guidSubwordCmdSet" id="cmdidSubwordPrev" priority="0x100" type="Button">
+				<Parent guid="guidSubwordCmdSet" id="SubwordMenuGroup"/>
 				<CommandFlag>CommandWellOnly</CommandFlag>
 				<Strings>
-					<ButtonText>SubWordPrev</ButtonText>
-					<CommandName>SubWordPrev</CommandName>
-				</Strings>
-			</Button>
-
-			<Button guid="guidSubWordCmdSet" id="cmdidSubWordNextExtend" priority="0x100" type="Button">
-				<Parent guid="guidSubWordCmdSet" id="SubWordMenuGroup"/>
-				<CommandFlag>CommandWellOnly</CommandFlag>
-				<Strings>
-					<ButtonText>SubWordNextExtend</ButtonText>
-					<CommandName>SubWordNextExtend</CommandName>
-				</Strings>
-			</Button>
-			<Button guid="guidSubWordCmdSet" id="cmdidSubWordPrevExtend" priority="0x100" type="Button">
-				<Parent guid="guidSubWordCmdSet" id="SubWordMenuGroup"/>
-				<CommandFlag>CommandWellOnly</CommandFlag>
-				<Strings>
-					<ButtonText>SubWordPrevExtend</ButtonText>
-					<CommandName>SubWordPrevExtend</CommandName>
+					<ButtonText>SubwordPrevious</ButtonText>
+					<CommandName>SubwordPrevious</CommandName>
 				</Strings>
 			</Button>
 
-			<Button guid="guidSubWordCmdSet" id="cmdidSubWordDeleteToEnd" priority="0x100" type="Button">
-				<Parent guid="guidSubWordCmdSet" id="SubWordMenuGroup"/>
+			<Button guid="guidSubwordCmdSet" id="cmdidSubwordNextExtend" priority="0x100" type="Button">
+				<Parent guid="guidSubwordCmdSet" id="SubwordMenuGroup"/>
 				<CommandFlag>CommandWellOnly</CommandFlag>
 				<Strings>
-					<ButtonText>SubWordDeleteToEnd</ButtonText>
-					<CommandName>SubWordDeleteToEnd</CommandName>
+					<ButtonText>SubwordNextExtend</ButtonText>
+					<CommandName>SubwordNextExtend</CommandName>
 				</Strings>
 			</Button>
-			<Button guid="guidSubWordCmdSet" id="cmdidSubWordDeleteToStart" priority="0x100" type="Button">
-				<Parent guid="guidSubWordCmdSet" id="SubWordMenuGroup"/>
+			<Button guid="guidSubwordCmdSet" id="cmdidSubwordPrevExtend" priority="0x100" type="Button">
+				<Parent guid="guidSubwordCmdSet" id="SubwordMenuGroup"/>
 				<CommandFlag>CommandWellOnly</CommandFlag>
 				<Strings>
-					<ButtonText>SubWordDeleteToStart</ButtonText>
-					<CommandName>SubWordDeleteToStart</CommandName>
+					<ButtonText>SubwordPreviousExtend</ButtonText>
+					<CommandName>SubwordPreviousExtend</CommandName>
+				</Strings>
+			</Button>
+
+			<Button guid="guidSubwordCmdSet" id="cmdidSubwordDeleteToEnd" priority="0x100" type="Button">
+				<Parent guid="guidSubwordCmdSet" id="SubwordMenuGroup"/>
+				<CommandFlag>CommandWellOnly</CommandFlag>
+				<Strings>
+					<ButtonText>SubwordDeleteToEnd</ButtonText>
+					<CommandName>SubwordDeleteToEnd</CommandName>
+				</Strings>
+			</Button>
+			<Button guid="guidSubwordCmdSet" id="cmdidSubwordDeleteToStart" priority="0x100" type="Button">
+				<Parent guid="guidSubwordCmdSet" id="SubwordMenuGroup"/>
+				<CommandFlag>CommandWellOnly</CommandFlag>
+				<Strings>
+					<ButtonText>SubwordDeleteToStart</ButtonText>
+					<CommandName>SubwordDeleteToStart</CommandName>
 				</Strings>
 			</Button>
 		</Buttons>
 	</Commands>
 
 	<Symbols>
-		<GuidSymbol name="guidSubWordPackage" value="{25bcedb6-b77f-49b1-af0e-bc047dcb6e11}"/>
-		<GuidSymbol name="guidSubWordCmdSet" value="{105b2c43-ede9-477b-af95-7e91e2cc11fb}">
-			<IDSymbol name="SubWordMenuGroup" value="0x1020"/>
-			<IDSymbol name="cmdidSubWordNext" value="0x100"/>
-			<IDSymbol name="cmdidSubWordPrev" value="0x101"/>
-			<IDSymbol name="cmdidSubWordNextExtend" value="0x102"/>
-			<IDSymbol name="cmdidSubWordPrevExtend" value="0x103"/>
-			<IDSymbol name="cmdidSubWordDeleteToEnd" value="0x104"/>
-			<IDSymbol name="cmdidSubWordDeleteToStart" value="0x105"/>
+		<GuidSymbol name="guidSubwordPackage" value="{25bcedb6-b77f-49b1-af0e-bc047dcb6e11}"/>
+		<GuidSymbol name="guidSubwordCmdSet" value="{105b2c43-ede9-477b-af95-7e91e2cc11fb}">
+			<IDSymbol name="SubwordMenuGroup" value="0x1020"/>
+			<IDSymbol name="cmdidSubwordNext" value="0x100"/>
+			<IDSymbol name="cmdidSubwordPrev" value="0x101"/>
+			<IDSymbol name="cmdidSubwordNextExtend" value="0x102"/>
+			<IDSymbol name="cmdidSubwordPrevExtend" value="0x103"/>
+			<IDSymbol name="cmdidSubwordDeleteToEnd" value="0x104"/>
+			<IDSymbol name="cmdidSubwordDeleteToStart" value="0x105"/>
 		</GuidSymbol>
 	</Symbols>
 </CommandTable>

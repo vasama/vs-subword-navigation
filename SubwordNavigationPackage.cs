@@ -44,12 +44,12 @@ namespace SubwordNavigation
 			Guid packageCmdSetGuid = new Guid(PackageCmdSetGuid);
 
 			OleMenuCommandService commandService = (OleMenuCommandService)await this.GetServiceAsync(typeof(IMenuCommandService));
-			commandService.AddCommand(new MenuCommand(SubWordNext, new CommandID(packageCmdSetGuid, CommandIdNext)));
-			commandService.AddCommand(new MenuCommand(SubWordPrev, new CommandID(packageCmdSetGuid, CommandIdPrev)));
-			commandService.AddCommand(new MenuCommand(SubWordNextExtend, new CommandID(packageCmdSetGuid, CommandIdNextExtend)));
-			commandService.AddCommand(new MenuCommand(SubWordPrevExtend, new CommandID(packageCmdSetGuid, CommandIdPrevExtend)));
-			commandService.AddCommand(new MenuCommand(SubWordDeleteToEnd, new CommandID(packageCmdSetGuid, CommandIdDeleteToEnd)));
-			commandService.AddCommand(new MenuCommand(SubWordDeleteToStart, new CommandID(packageCmdSetGuid, CommandIdDeleteToStart)));
+			commandService.AddCommand(new MenuCommand(SubwordNext, new CommandID(packageCmdSetGuid, CommandIdNext)));
+			commandService.AddCommand(new MenuCommand(SubwordPrev, new CommandID(packageCmdSetGuid, CommandIdPrev)));
+			commandService.AddCommand(new MenuCommand(SubwordNextExtend, new CommandID(packageCmdSetGuid, CommandIdNextExtend)));
+			commandService.AddCommand(new MenuCommand(SubwordPrevExtend, new CommandID(packageCmdSetGuid, CommandIdPrevExtend)));
+			commandService.AddCommand(new MenuCommand(SubwordDeleteToEnd, new CommandID(packageCmdSetGuid, CommandIdDeleteToEnd)));
+			commandService.AddCommand(new MenuCommand(SubwordDeleteToStart, new CommandID(packageCmdSetGuid, CommandIdDeleteToStart)));
 		}
 
 		static void Swap<T>(ref T a, ref T b)
@@ -229,7 +229,7 @@ namespace SubwordNavigation
 						UndoContext undoContext = m_dte.UndoContext;
 
 						bool newUndoContext = !undoContext.IsOpen;
-						if (newUndoContext) undoContext.Open("Sub-word delete");
+						if (newUndoContext) undoContext.Open("Subword delete");
 
 						try
 						{
@@ -275,32 +275,32 @@ namespace SubwordNavigation
 			}
 		}
 
-		void SubWordNext(object sender, EventArgs e)
+		void SubwordNext(object sender, EventArgs e)
 		{
 			Execute(Action.Move, false);
 		}
 
-		void SubWordPrev(object sender, EventArgs e)
+		void SubwordPrev(object sender, EventArgs e)
 		{
 			Execute(Action.Move, true);
 		}
 
-		void SubWordNextExtend(object sender, EventArgs e)
+		void SubwordNextExtend(object sender, EventArgs e)
 		{
 			Execute(Action.Extend, false);
 		}
 
-		void SubWordPrevExtend(object sender, EventArgs e)
+		void SubwordPrevExtend(object sender, EventArgs e)
 		{
 			Execute(Action.Extend, true);
 		}
 
-		void SubWordDeleteToEnd(object sender, EventArgs e)
+		void SubwordDeleteToEnd(object sender, EventArgs e)
 		{
 			Execute(Action.Delete, false);
 		}
 
-		void SubWordDeleteToStart(object sender, EventArgs e)
+		void SubwordDeleteToStart(object sender, EventArgs e)
 		{
 			Execute(Action.Delete, true);
 		}
