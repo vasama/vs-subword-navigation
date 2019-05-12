@@ -153,7 +153,10 @@ struct SubwordSearcher
 		TransTableStruct table;
 
 		for (int i = 0; i < TransTableSize; ++i)
+		{
 			table.Set((CharClass)i, (CharClass)i, true);
+			table.Set((CharClass)i, CharClass.Whitespace, true);
+		}
 
 		table.Set(CharClass.Uppercase, CharClass.Lowercase, true);
 		table.Set(CharClass.Uppercase, CharClass.Uppercase, CharClass.Lowercase, false);
