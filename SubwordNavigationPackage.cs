@@ -11,6 +11,11 @@ using Task = System.Threading.Tasks.Task;
 
 namespace SubwordNavigation
 {
+	public sealed class OptionsPage : DialogPage
+	{
+
+	}
+
 	[PackageRegistration(UseManagedResourcesOnly = true, AllowsBackgroundLoading = true)]
 	[Guid(PackageGuid)]
 	[ProvideMenuResource("Menus.ctmenu", 1)]
@@ -59,28 +64,35 @@ namespace SubwordNavigation
 			b = c;
 		}
 
-		[DebuggerDisplay("{{{Line}:{Column}}}")]
+		[DebuggerDisplay("{Line}:{Column}")]
 		struct TextPos
 		{
 			public int Line;
 			public int Column;
 
+			public static bool operator==(TextPos a, TextPos b)
+			{
+				return a.Line == b.Line && a.Column == b.Column;
+			}
+
+			public static bool operator!=(TextPos a, TextPos b)
+			{
+				return a.Line != b.Line || a.Column != b.Column;
+			}
+
 			public static bool operator<(TextPos a, TextPos b)
 			{
-				return a.Line < b.Line || a.Column < b.Column;
+				if (a.Line < b.Line) return true;
+				if (a.Line > b.Line) return false;
+				return a.Column < b.Column;
 			}
 
 			public static bool operator>(TextPos a, TextPos b)
 			{
-				return a.Line > b.Line || a.Column > b.Column;
+				if (a.Line > b.Line) return true;
+				if (a.Line < b.Line) return false;
+				return a.Column > b.Column;
 			}
-		}
-
-		static int GetLineLength(IVsTextLines textLines, int line)
-		{
-			int length;
-			textLines.GetLengthOfLine(line, out length);
-			return length;
 		}
 
 		enum Action
@@ -90,26 +102,33 @@ namespace SubwordNavigation
 			Delete,
 		}
 
-		void Execute(Action action, bool reverse)
+		static int GetLineLength(IVsTextLines textLines, int line)
 		{
-			ThreadHelper.ThrowIfNotOnUIThread();
+			int length;
+			textLines.GetLengthOfLine(line, out length);
+			return length;
+		}
 
-			IVsTextManager textManager = (IVsTextManager)GetService(typeof(SVsTextManager));
+		static (TextPos, TextPos) GetBoxSelection(IVsTextView textView)
+		{
+			TextPos beg;
+			TextPos end;
 
-			IVsTextView textView = null;
-			textManager.GetActiveView(1, null, out textView);
+			textView.GetSelection(
+				out beg.Line, out beg.Column,
+				out end.Line, out end.Column);
 
-			if (textView == null)
-				return;
+			return (beg, end);
+		}
 
-			IVsTextLines textLines = null;
-			textView.GetBuffer(out textLines);
+		static (TextPos, TextPos) NormalizeBoxSelection(TextPos anchor, TextPos select)
+		{
+			return anchor > select ? (select, anchor) : (anchor, select);
+		}
 
-			TextPos pos;
-			textView.GetCaretPos(out pos.Line, out pos.Column);
-
-			bool boxSelect = textView.GetSelectionMode() == TextSelMode.SM_BOX;
-
+		TextPos GetNextPos(IVsTextView textView, IVsTextLines textLines,
+			TextPos pos, bool reverse, bool boxSelect, bool movePastEndOfLine)
+		{
 			TextPos newpos;
 			if (reverse)
 			{
@@ -122,9 +141,6 @@ namespace SubwordNavigation
 					}
 					else if (pos.Line == 0)
 					{
-						if (action != Action.Delete)
-							return;
-
 						newpos = pos;
 					}
 					else
@@ -153,7 +169,7 @@ namespace SubwordNavigation
 				{
 					if (boxSelect)
 					{
-						if (action == Action.Extend)
+						if (movePastEndOfLine)
 						{
 							newpos.Line = pos.Line;
 							newpos.Column = pos.Column + 1;
@@ -170,9 +186,6 @@ namespace SubwordNavigation
 
 						if (pos.Line >= lineCount - 1)
 						{
-							if (action != Action.Delete)
-								return;
-
 							newpos = pos;
 						}
 						else
@@ -191,40 +204,79 @@ namespace SubwordNavigation
 					newpos.Column = m_searcher.GetNextBoundary(text, pos.Column);
 				}
 			}
+			return newpos;
+		}
+
+		void Execute(Action action, bool reverse)
+		{
+			ThreadHelper.ThrowIfNotOnUIThread();
+
+			IVsTextManager textManager = (IVsTextManager)GetService(typeof(SVsTextManager));
+
+			IVsTextView textView = null;
+			textManager.GetActiveView(1, null, out textView);
+
+			if (textView == null)
+				return;
+
+			IVsTextLines textLines = null;
+			textView.GetBuffer(out textLines);
+
+			bool boxSelect = textView.GetSelectionMode() == TextSelMode.SM_BOX;
+
+			TextPos newpos;
+			if (boxSelect && action == Action.Move)
+			{
+				(TextPos beg, TextPos end) = GetBoxSelection(textView);
+
+				newpos = reverse ? beg : end;
+				textView.SetSelectionMode(TextSelMode.SM_STREAM);
+				textView.SetCaretPos(newpos.Line, newpos.Column);
+				return;
+			}
+
+			TextPos pos;
+			textView.GetCaretPos(out pos.Line, out pos.Column);
+
+			// box selections can extend past the end of the the line
+			bool movePastEndOfLine = action == Action.Extend;
+
+			newpos = GetNextPos(textView, textLines, pos,
+				reverse, boxSelect, movePastEndOfLine);
 
 			switch (action)
 			{
 			case Action.Move:
-				textView.SetCaretPos(newpos.Line, newpos.Column);
+				if (newpos != pos)
+				{
+					textView.SetCaretPos(newpos.Line, newpos.Column);
+				}
 				break;
 
 			case Action.Extend:
+				if (newpos != pos)
 				{
-					TextPos anchor;
-					TextPos select;
+					(TextPos anchor, TextPos select) = GetBoxSelection(textView);
 
-					textView.GetSelection(out anchor.Line, out anchor.Column, out select.Line, out select.Column);
-					textView.SetSelection(anchor.Line, anchor.Column, newpos.Line, newpos.Column);
+					textView.SetSelection(
+						anchor.Line, anchor.Column,
+						newpos.Line, newpos.Column);
 				}
 				break;
 
 			//TODO: fix selection after undoing a delete
 			case Action.Delete:
 				{
-					TextPos anchor;
-					TextPos select;
-
-					textView.GetSelection(out anchor.Line, out anchor.Column, out select.Line, out select.Column);
+					(TextPos anchor, TextPos select) = GetBoxSelection(textView);
+					(TextPos beg, TextPos end) = NormalizeBoxSelection(anchor, select);
 
 					if (boxSelect)
 					{
-						TextPos beg;
-						beg.Line = Math.Min(anchor.Line, select.Line);
-						beg.Column = Math.Min(Math.Min(anchor.Column, select.Column), newpos.Column);
+						if (beg.Column > end.Column)
+							Swap(ref beg.Column, ref end.Column);
 
-						TextPos end;
-						end.Line = Math.Max(anchor.Line, select.Line);
-						end.Column = Math.Max(Math.Max(anchor.Column, select.Column), newpos.Column);
+						beg.Column = Math.Min(beg.Column, newpos.Column);
+						end.Column = Math.Max(end.Column, newpos.Column);
 
 						UndoContext undoContext = m_dte.UndoContext;
 
@@ -244,10 +296,15 @@ namespace SubwordNavigation
 								int endColumn = Math.Min(end.Column, length);
 
 								if (endColumn > beg.Column)
-									textLines.ReplaceLines(i, beg.Column, i, endColumn, IntPtr.Zero, 0, null);
+								{
+									textLines.ReplaceLines(i, beg.Column,
+										i, endColumn, IntPtr.Zero, 0, null);
+								}
 							}
 
-							textView.SetSelection(anchor.Line, beg.Column, select.Line, beg.Column);
+							textView.SetSelection(
+								anchor.Line, beg.Column,
+								select.Line, beg.Column);
 						}
 						finally
 						{
@@ -256,19 +313,20 @@ namespace SubwordNavigation
 					}
 					else
 					{
-						TextPos beg = anchor;
-						TextPos end = select;
+						if (newpos < beg) beg = newpos;
+						if (newpos > end) end = newpos;
 
-						if (beg > end)
-							Swap(ref beg, ref end);
+						if (beg.Line == end.Line)
+						{
+							int length;
+							textLines.GetLengthOfLine(beg.Line, out length);
 
-						if (newpos < beg)
-							beg = newpos;
 
-						if (newpos > end)
-							end = newpos;
+						}
 
-						textLines.ReplaceLines(beg.Line, beg.Column, end.Line, end.Column, IntPtr.Zero, 0, null);
+						textLines.ReplaceLines(
+							beg.Line, beg.Column,
+							end.Line, end.Column, IntPtr.Zero, 0, null);
 					}
 				}
 				break;
