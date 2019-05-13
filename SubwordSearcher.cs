@@ -12,35 +12,36 @@ static class BitArrayExt
 
 struct SubwordSearcher
 {
-	public struct Options
-	{
-		public static readonly Options Default;
-	}
+    public struct Options
+    {
+        public static readonly Options Default;
+    }
 
-	enum CharClass
-	{
-		Other,
-		Uppercase,
-		Lowercase,
-		Numeral,
-		Underscore,
-		Whitespace,
-		Linebreak,
-		Bracket,
+    enum CharClass
+    {
+        Other,
+        Uppercase,
+        Lowercase,
+        Numeral,
+        Underscore,
+        Whitespace,
+        Linebreak,
+        Bracket,
+        Operator,
 
-		Count,
-	}
+        Count,
+    }
 
     static readonly CharClass[] CharClassTable = ((Func<CharClass[]>)(() =>
-	{
+    {
         var r = new CharClass[128];
-		for (int i = 'A'; i <= 'Z'; ++i)
+        for (int i = 'A'; i <= 'Z'; ++i)
             r[i] = CharClass.Uppercase;
 
-		for (int i = 'a'; i <= 'z'; ++i)
+        for (int i = 'a'; i <= 'z'; ++i)
             r[i] = CharClass.Lowercase;
 
-		for (int i = '0'; i <= '9'; ++i)
+        for (int i = '0'; i <= '9'; ++i)
             r[i] = CharClass.Numeral;
 
         r['_'] = CharClass.Underscore;
@@ -59,6 +60,20 @@ struct SubwordSearcher
         r[']'] = CharClass.Bracket;
         r['{'] = CharClass.Bracket;
         r['}'] = CharClass.Bracket;
+
+        r['.'] = CharClass.Operator;
+        r[','] = CharClass.Operator;
+        r['='] = CharClass.Operator;
+        r['+'] = CharClass.Operator;
+        r['-'] = CharClass.Operator;
+        r['*'] = CharClass.Operator;
+        r['/'] = CharClass.Operator;
+        r['%'] = CharClass.Operator;
+        r['<'] = CharClass.Operator;
+        r['>'] = CharClass.Operator;
+        r['&'] = CharClass.Operator;
+        r['|'] = CharClass.Operator;
+        r['^'] = CharClass.Operator;
         return r;
     }))();
 
@@ -68,51 +83,53 @@ struct SubwordSearcher
         if (char.IsUpper(chr)) return CharClass.Uppercase;
         if (char.IsLower(chr)) return CharClass.Lowercase;
         if (char.IsNumber(chr)) return CharClass.Numeral;
-		return CharClass.Other;
-	}
+        return CharClass.Other;
+    }
 
     static CharClass GetCharClass(char chr)
-	{
+    {
         if (chr >= CharClassTable.Length) return GetNonAsciiCharClass(chr);
         return CharClassTable[chr];
-	}
+    }
 
-	const int TransTableShift = 3;
-	const int TransTableSize = 1 << TransTableShift;
+    const int TransTableShift = 4;
+    const int TransTableSize = 1 << TransTableShift;
 
 #if DEBUG
-	static SubwordSearcher()
-	{
-		if (!((int)CharClass.Count <= TransTableSize))
-			throw new Exception();
-	}
+    static SubwordSearcher()
+    {
+        if (!((int)CharClass.Count <= TransTableSize))
+            throw new Exception();
+    }
 #endif
 
     static int TransIndex(CharClass last, CharClass cur, CharClass next)
-		{
+    {
         var high = (int)last << TransTableShift;
         var mid = (high | (int)cur) << TransTableShift;
         return mid | (int)next;
-		}
+    }
     static (int, int) TransRange(CharClass from, CharClass cur) => (TransIndex(from, cur, 0), TransIndex(from, cur, CharClass.Count));
 
     BitArray transTable;
 
     BitArray CreateTransTable()
-		{
+    {
         var r = new BitArray(TransTableSize * TransTableSize * TransTableSize, true);
 
-			for (int i = 0; i < (int)CharClass.Count; ++i)
+        for (int i = 0; i < (int)CharClass.Count; ++i)
         {
             var cc = (CharClass)i;
             r.SetRange(TransRange(cc, cc), false);
             r.SetRange(TransRange(cc, CharClass.Whitespace), false);
-	}
+        }
 
         r.SetRange(TransRange(CharClass.Uppercase, CharClass.Lowercase), false);
         r.SetRange(TransRange(CharClass.Uppercase, CharClass.Underscore), false);
         r.SetRange(TransRange(CharClass.Lowercase, CharClass.Underscore), false);
 
+        r.SetRange(TransRange(CharClass.Uppercase, CharClass.Operator), false);
+        r.SetRange(TransRange(CharClass.Lowercase, CharClass.Operator), false);
         r.SetRange(TransRange(CharClass.Uppercase, CharClass.Bracket), false);
         r.SetRange(TransRange(CharClass.Lowercase, CharClass.Bracket), false);
 
@@ -121,47 +138,47 @@ struct SubwordSearcher
         r[TransIndex(CharClass.Uppercase, CharClass.Uppercase, CharClass.Lowercase)] = true;
         // r.SetRange(TransRange(CharClass.Bracket, CharClass.Bracket), true);
         return r;
-	}
+    }
 
     public void SetOptions(Options options)
-		{
+    {
         transTable = CreateTransTable();
-	}
+    }
 
-	public int GetNextBoundary(string text, int index)
-	{
-		int length = text.Length;
-		int lastIndex = length - 1;
+    public int GetNextBoundary(string text, int index)
+    {
+        int length = text.Length;
+        int lastIndex = length - 1;
 
         if (index + 1 >= lastIndex)
-			return index + 1;
+            return index + 1;
 
         var last = GetCharClass(text[index]);
         ++index;
         var cur = GetCharClass(text[index]);
 
-		while (index < lastIndex)
-		{
+        while (index < lastIndex)
+        {
             var next = GetCharClass(text[index + 1]);
 
             if (transTable[TransIndex(last, cur, next)])
-				return index;
+                return index;
 
             last = cur;
             cur = next;
-			++index;
-		}
+            ++index;
+        }
 
         if (!transTable[TransIndex(last, cur, CharClass.Linebreak)])
-			++index;
+            ++index;
 
-		return index;
-	}
+        return index;
+    }
 
-	public int GetPrevBoundary(string text, int index)
-	{
-		if (index <= 1)
-			return 0;
+    public int GetPrevBoundary(string text, int index)
+    {
+        if (index <= 1)
+            return 0;
 
         var next = CharClass.Linebreak;
         var cur = CharClass.Linebreak;
@@ -171,18 +188,18 @@ struct SubwordSearcher
         if (index < text.Length) cur = GetCharClass(text[index]);
         else index = text.Length;
 
-		while (index > 0)
-		{
+        while (index > 0)
+        {
             var last = GetCharClass(text[index - 1]);
 
             if (transTable[TransIndex(last, cur, next)])
-				break;
+                break;
 
             next = cur;
             cur = last;
-			--index;
-		}
+            --index;
+        }
 
-		return index;
-	}
+        return index;
+    }
 }
