@@ -313,6 +313,12 @@ namespace SubwordNavigation
 							if (beg.Line == end.Line)
 							{
 								textLines.GetLengthOfLine(beg.Line, out var length);
+
+								if (length == 0)
+								{
+									textView.SetCaretPos(beg.Line, 0);
+									break;
+								}
 							}
 
 							textLines.ReplaceLines(
