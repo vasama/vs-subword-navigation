@@ -3,22 +3,67 @@ using EnvDTE80;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.TextManager.Interop;
 using System;
+using System.ComponentModel;
 using System.ComponentModel.Design;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Threading;
+using System.Windows;
 using Task = System.Threading.Tasks.Task;
 
 namespace SubwordNavigation
 {
-	public sealed class OptionsPage : DialogPage
+	public enum SkipConnectedWhitespace
 	{
+		[Description("Never")]
+		Never,
 
+		[Description("Before words")]
+		Before,
+
+		[Description("After words")]
+		After,
+	}
+
+	[Guid("c2e8b1a3-9c6f-4a48-b6ca-027242d31a28")]
+	public sealed class OptionsPage : UIElementDialogPage
+	{
+		[DisplayName("Stop between UPPER and Pascal")]
+		public bool StopBetweenUpperAndPascal { get; set; }
+
+		[DisplayName("Skip connected whitespace")]
+		public SkipConnectedWhitespace SkipConnectedWhitespace { get; set; }
+
+		OptionTree m_optionTree;
+		protected override UIElement Child
+		{
+			get
+			{
+				OptionTree optionTree = m_optionTree;
+				if (optionTree == null)
+				{
+					optionTree = new OptionTree();
+					optionTree.DataContext = this;
+					m_optionTree = optionTree;
+				}
+				return optionTree;
+			}
+		}
+
+		protected override void OnApply(PageApplyEventArgs e)
+		{
+			base.OnApply(e);
+
+			Applied?.Invoke(this, EventArgs.Empty);
+		}
+
+		public event EventHandler Applied;
 	}
 
 	[PackageRegistration(UseManagedResourcesOnly = true, AllowsBackgroundLoading = true)]
 	[Guid(PackageGuid)]
 	[ProvideMenuResource("Menus.ctmenu", 1)]
+	[ProvideOptionPage(typeof(OptionsPage), "Subword navigation", "General", 0, 0, true)]
 	public sealed class SubwordNavigationPackage : AsyncPackage
 	{
 		public const string PackageGuid = "25bcedb6-b77f-49b1-af0e-bc047dcb6e11";
@@ -33,18 +78,17 @@ namespace SubwordNavigation
 
 		DTE2 m_dte;
 
-		SubwordSearcher m_searcher;
-
-		public SubwordNavigationPackage()
-		{
-			m_searcher.SetOptions(SubwordSearcher.Options.Default);
-		}
+		Scanner m_scanner;
 
 		protected override async Task InitializeAsync(CancellationToken cancellationToken, IProgress<ServiceProgressData> progress)
 		{
 			await this.JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
 
 			m_dte = (DTE2)await this.GetServiceAsync(typeof(DTE));
+
+			var options = (OptionsPage)this.GetDialogPage(typeof(OptionsPage));
+			options.Applied += OptionsPage_Applied;
+			m_scanner.SetOptions(options);
 
 			var packageCmdSetGuid = new Guid(PackageCmdSetGuid);
 			var commandService = (OleMenuCommandService)await this.GetServiceAsync(typeof(IMenuCommandService));
@@ -54,6 +98,11 @@ namespace SubwordNavigation
 			commandService.AddCommand(new MenuCommand(SubwordPrevExtend, new CommandID(packageCmdSetGuid, CommandIdPrevExtend)));
 			commandService.AddCommand(new MenuCommand(SubwordDeleteToEnd, new CommandID(packageCmdSetGuid, CommandIdDeleteToEnd)));
 			commandService.AddCommand(new MenuCommand(SubwordDeleteToStart, new CommandID(packageCmdSetGuid, CommandIdDeleteToStart)));
+		}
+
+		void OptionsPage_Applied(object sender, EventArgs e)
+		{
+			m_scanner.SetOptions((OptionsPage)sender);
 		}
 
 		static void Swap<T>(ref T a, ref T b)
@@ -101,6 +150,12 @@ namespace SubwordNavigation
 			Delete,
 		}
 
+		enum Direction
+		{
+			Forward,
+			Backward,
+		}
+
 		static int GetLineLength(IVsTextLines textLines, int line)
 		{
 			int length;
@@ -124,7 +179,6 @@ namespace SubwordNavigation
 		{
 			return anchor > select ? (select, anchor) : (anchor, select);
 		}
-		enum Direction { Forward, Backward }
 
 		TextPos GetNextPos(IVsTextView textView, IVsTextLines textLines,
 			TextPos pos, Direction direction, bool boxSelect, bool movePastEndOfLine)
@@ -156,7 +210,7 @@ namespace SubwordNavigation
 					textView.GetTextStream(pos.Line, 0, pos.Line, length, out var text);
 
 					newpos.Line = pos.Line;
-					newpos.Column = m_searcher.GetPrevBoundary(text, pos.Column);
+					newpos.Column = m_scanner.GetPrevBoundary(text, pos.Column);
 				}
 			}
 			else
@@ -198,7 +252,7 @@ namespace SubwordNavigation
 					textView.GetTextStream(pos.Line, 0, pos.Line, length, out var text);
 
 					newpos.Line = pos.Line;
-					newpos.Column = m_searcher.GetNextBoundary(text, pos.Column);
+					newpos.Column = m_scanner.GetNextBoundary(text, pos.Column);
 				}
 			}
 			return newpos;
@@ -242,91 +296,91 @@ namespace SubwordNavigation
 
 			switch (action)
 			{
-				case Action.Move:
-					if (newpos != pos)
+			case Action.Move:
+				if (newpos != pos)
+				{
+					textView.SetCaretPos(newpos.Line, newpos.Column);
+				}
+				break;
+
+			case Action.Extend:
+				if (newpos != pos)
+				{
+					var (anchor, select) = GetBoxSelection(textView);
+
+					textView.SetSelection(
+						anchor.Line, anchor.Column,
+						newpos.Line, newpos.Column);
+				}
+				break;
+
+			//TODO: fix selection after undoing a delete
+			case Action.Delete:
+				{
+					var (anchor, select) = GetBoxSelection(textView);
+					var (beg, end) = NormalizeBoxSelection(anchor, select);
+
+					if (boxSelect)
 					{
-						textView.SetCaretPos(newpos.Line, newpos.Column);
-					}
-					break;
+						if (beg.Column > end.Column)
+							Swap(ref beg.Column, ref end.Column);
 
-				case Action.Extend:
-					if (newpos != pos)
-					{
-						var (anchor, select) = GetBoxSelection(textView);
+						beg.Column = Math.Min(beg.Column, newpos.Column);
+						end.Column = Math.Max(end.Column, newpos.Column);
 
-						textView.SetSelection(
-							anchor.Line, anchor.Column,
-							newpos.Line, newpos.Column);
-					}
-					break;
+						var undoContext = m_dte.UndoContext;
 
-				//TODO: fix selection after undoing a delete
-				case Action.Delete:
-					{
-						var (anchor, select) = GetBoxSelection(textView);
-						var (beg, end) = NormalizeBoxSelection(anchor, select);
+						bool newUndoContext = !undoContext.IsOpen;
+						if (newUndoContext) undoContext.Open("Subword delete");
 
-						if (boxSelect)
+						try
 						{
-							if (beg.Column > end.Column)
-								Swap(ref beg.Column, ref end.Column);
-
-							beg.Column = Math.Min(beg.Column, newpos.Column);
-							end.Column = Math.Max(end.Column, newpos.Column);
-
-							var undoContext = m_dte.UndoContext;
-
-							bool newUndoContext = !undoContext.IsOpen;
-							if (newUndoContext) undoContext.Open("Subword delete");
-
-							try
+							for (int i = beg.Line; i <= end.Line; ++i)
 							{
-								for (int i = beg.Line; i <= end.Line; ++i)
+								textLines.GetLengthOfLine(i, out var length);
+
+								textView.GetTextStream(i, 0, i, length, out var text);
+
+								int endColumn = Math.Min(end.Column, length);
+
+								if (endColumn > beg.Column)
 								{
-									textLines.GetLengthOfLine(i, out var length);
-
-									textView.GetTextStream(i, 0, i, length, out var text);
-
-									int endColumn = Math.Min(end.Column, length);
-
-									if (endColumn > beg.Column)
-									{
-										textLines.ReplaceLines(i, beg.Column,
-											i, endColumn, IntPtr.Zero, 0, null);
-									}
-								}
-
-								textView.SetSelection(
-									anchor.Line, beg.Column,
-									select.Line, beg.Column);
-							}
-							finally
-							{
-								if (newUndoContext) undoContext.Close();
-							}
-						}
-						else
-						{
-							if (newpos < beg) beg = newpos;
-							if (newpos > end) end = newpos;
-
-							if (beg.Line == end.Line)
-							{
-								textLines.GetLengthOfLine(beg.Line, out var length);
-
-								if (length == 0)
-								{
-									textView.SetCaretPos(beg.Line, 0);
-									break;
+									textLines.ReplaceLines(i, beg.Column,
+										i, endColumn, IntPtr.Zero, 0, null);
 								}
 							}
 
-							textLines.ReplaceLines(
-								beg.Line, beg.Column,
-								end.Line, end.Column, IntPtr.Zero, 0, null);
+							textView.SetSelection(
+								anchor.Line, beg.Column,
+								select.Line, beg.Column);
+						}
+						finally
+						{
+							if (newUndoContext) undoContext.Close();
 						}
 					}
-					break;
+					else
+					{
+						if (newpos < beg) beg = newpos;
+						if (newpos > end) end = newpos;
+
+						if (beg.Line == end.Line)
+						{
+							textLines.GetLengthOfLine(beg.Line, out var length);
+
+							if (length == 0)
+							{
+								textView.SetCaretPos(beg.Line, 0);
+								break;
+							}
+						}
+
+						textLines.ReplaceLines(
+							beg.Line, beg.Column,
+							end.Line, end.Column, IntPtr.Zero, 0, null);
+					}
+				}
+				break;
 			}
 		}
 
