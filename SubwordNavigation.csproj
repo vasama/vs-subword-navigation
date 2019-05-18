@@ -52,7 +52,7 @@
     <Compile Include="SubwordNavigationPackage.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="SubwordSearcher.cs" />
+    <Compile Include="Scanner.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="source.extension.vsixmanifest">
