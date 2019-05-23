@@ -29,10 +29,11 @@ namespace SubwordNavigation
 	public sealed class OptionsPage : UIElementDialogPage
 	{
 		[DisplayName("Stop between UPPER and Pascal")]
-		public bool StopBetweenUpperAndPascal { get; set; }
+		public bool StopBetweenUpperAndPascal { get; set; } = true;
 
 		[DisplayName("Skip connected whitespace")]
-		public SkipConnectedWhitespace SkipConnectedWhitespace { get; set; }
+		public SkipConnectedWhitespace SkipConnectedWhitespace { get; set; } =
+			SkipConnectedWhitespace.After;
 
 		OptionTree m_optionTree;
 		protected override UIElement Child
