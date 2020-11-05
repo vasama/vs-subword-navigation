@@ -18,22 +18,82 @@ namespace SubwordNavigation
 		[Description("Never")]
 		Never,
 
+		[Description("Before non-whitespace")]
+		BeforeAnything,
+
+		[Description("After non-whitespace")]
+		AfterAnything,
+	}
+
+	public enum SkipConnectedUnderscores
+	{
+		[Description("Never")]
+		Never,
+
+		[Description("Before subwords")]
+		BeforeSubwords,
+
+		[Description("After subwords")]
+		AfterSubwords,
+	}
+
+	public enum SkipConnectedOperators
+	{
+		[Description("Never")]
+		Never,
+
 		[Description("Before words")]
-		Before,
+		BeforeWords,
 
 		[Description("After words")]
-		After,
+		AfterWords,
+	}
+
+	public enum SkipConnectedBrackets
+	{
+		[Description("Never")]
+		Never,
+
+		[Description("Before words")]
+		BeforeWords,
+
+		[Description("After words")]
+		AfterWords,
 	}
 
 	[Guid("c2e8b1a3-9c6f-4a48-b6ca-027242d31a28")]
 	public sealed class OptionsPage : UIElementDialogPage
 	{
-		[DisplayName("Stop between UPPER and Pascal")]
+		[DisplayName("Recognize PascalCase")]
+		public bool RecognizePascal { get; set; } = true;
+
+		[DisplayName("Stop between UPPERCASE and PascalCase")]
 		public bool StopBetweenUpperAndPascal { get; set; } = true;
+
+		[DisplayName("Stop between operators")]
+		public bool StopBetweenOperators { get; set; } = false;
+
+		[DisplayName("Stop between brackets")]
+		public bool StopBetweenBrackets { get; set; } = true;
+
+		[DisplayName("Stop between operators and brackets")]
+		public bool StopBetweenOperatorsAndBrackets { get; set; } = true;
 
 		[DisplayName("Skip connected whitespace")]
 		public SkipConnectedWhitespace SkipConnectedWhitespace { get; set; } =
-			SkipConnectedWhitespace.After;
+			SkipConnectedWhitespace.AfterAnything;
+
+		[DisplayName("Skip connected underscores")]
+		public SkipConnectedUnderscores SkipConnectedUnderscores { get; set; } =
+			SkipConnectedUnderscores.AfterSubwords;
+
+		[DisplayName("Skip connected operators")]
+		public SkipConnectedOperators SkipConnectedOperators { get; set; } =
+			SkipConnectedOperators.Never;
+
+		[DisplayName("Skip connected brackets")]
+		public SkipConnectedBrackets SkipConnectedBrackets { get; set; } =
+			SkipConnectedBrackets.Never;
 
 		OptionTree m_optionTree;
 		protected override UIElement Child

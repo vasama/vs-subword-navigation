@@ -127,35 +127,86 @@ namespace SubwordNavigation
 
 			ForEachCharClass(cc => r.SetRange(TransRange(cc, cc), false));
 
+			if (options.RecognizePascal)
+			{
+				r.SetRange(TransRange(CharClass.Uppercase, CharClass.Lowercase), false);
+
+				if (options.StopBetweenUpperAndPascal)
+				{
+					r[TransIndex(CharClass.Uppercase,
+						CharClass.Uppercase, CharClass.Lowercase)] = true;
+				}
+			}
+
+			if (options.StopBetweenOperators)
+			{
+				r.SetRange(TransRange(CharClass.Operator, CharClass.Operator), true);
+			}
+
+			if (options.StopBetweenBrackets)
+			{
+				r.SetRange(TransRange(CharClass.Bracket, CharClass.Bracket), true);
+			}
+
+			if (options.StopBetweenOperatorsAndBrackets)
+			{
+				r.SetRange(TransRange(CharClass.Operator, CharClass.Bracket), true);
+				r.SetRange(TransRange(CharClass.Bracket, CharClass.Operator), true);
+			}
+
 			switch (options.SkipConnectedWhitespace)
 			{
-			case SkipConnectedWhitespace.Before:
+			case SkipConnectedWhitespace.BeforeAnything:
 				ForEachCharClass(cc => r.SetRange(TransRange(CharClass.Whitespace, cc), false));
 				break;
 
-			case SkipConnectedWhitespace.After:
+			case SkipConnectedWhitespace.AfterAnything:
 				ForEachCharClass(cc => r.SetRange(TransRange(cc, CharClass.Whitespace), false));
 				break;
 			}
 
-			r.SetRange(TransRange(CharClass.Uppercase, CharClass.Lowercase), false);
-			r.SetRange(TransRange(CharClass.Uppercase, CharClass.Underscore), false);
-			r.SetRange(TransRange(CharClass.Lowercase, CharClass.Underscore), false);
-
-			r.SetRange(TransRange(CharClass.Uppercase, CharClass.Operator), false);
-			r.SetRange(TransRange(CharClass.Lowercase, CharClass.Operator), false);
-			r.SetRange(TransRange(CharClass.Uppercase, CharClass.Bracket), false);
-			r.SetRange(TransRange(CharClass.Lowercase, CharClass.Bracket), false);
-
-			r.SetRange(TransRange(CharClass.Whitespace, CharClass.Linebreak), false);
-
-			if (options.StopBetweenUpperAndPascal)
+			switch (options.SkipConnectedUnderscores)
 			{
-				r[TransIndex(CharClass.Uppercase,
-					CharClass.Uppercase, CharClass.Lowercase)] = true;
+			case SkipConnectedUnderscores.BeforeSubwords:
+				r.SetRange(TransRange(CharClass.Underscore, CharClass.Uppercase), false);
+				r.SetRange(TransRange(CharClass.Underscore, CharClass.Lowercase), false);
+				break;
+
+			case SkipConnectedUnderscores.AfterSubwords:
+				r.SetRange(TransRange(CharClass.Uppercase, CharClass.Underscore), false);
+				r.SetRange(TransRange(CharClass.Lowercase, CharClass.Underscore), false);
+				break;
 			}
 
-			// r.SetRange(TransRange(CharClass.Bracket, CharClass.Bracket), true);
+			switch (options.SkipConnectedOperators)
+			{
+			case SkipConnectedOperators.BeforeWords:
+				r.SetRange(TransRange(CharClass.Operator, CharClass.Uppercase), false);
+				r.SetRange(TransRange(CharClass.Operator, CharClass.Lowercase), false);
+				r.SetRange(TransRange(CharClass.Operator, CharClass.Underscore), false);
+				break;
+
+			case SkipConnectedOperators.AfterWords:
+				r.SetRange(TransRange(CharClass.Uppercase, CharClass.Operator), false);
+				r.SetRange(TransRange(CharClass.Lowercase, CharClass.Operator), false);
+				r.SetRange(TransRange(CharClass.Underscore, CharClass.Operator), false);
+				break;
+			}
+
+			switch (options.SkipConnectedBrackets)
+			{
+			case SkipConnectedBrackets.BeforeWords:
+				r.SetRange(TransRange(CharClass.Bracket, CharClass.Uppercase), false);
+				r.SetRange(TransRange(CharClass.Bracket, CharClass.Lowercase), false);
+				break;
+
+			case SkipConnectedBrackets.AfterWords:
+				r.SetRange(TransRange(CharClass.Uppercase, CharClass.Bracket), false);
+				r.SetRange(TransRange(CharClass.Lowercase, CharClass.Bracket), false);
+				break;
+			}
+
+			r.SetRange(TransRange(CharClass.Whitespace, CharClass.Linebreak), false);
 
 			transTable = r;
 		}
